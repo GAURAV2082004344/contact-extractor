@@ -1,46 +1,23 @@
-Limitations:
+⚠️ Limitations
 
+First-page only by design; pagination and infinite scroll are not enabled.
 
+Filter selectors for sector/country and the Search/Apply button may need to be adjusted per site.
 
-First-page only; no pagination implemented by design.​
+💡 Improvements
 
+Add pagination/infinite scroll with scrolling loops and state deduplication.
 
+Improve precision via proximity scoring to the h5 (e.g., only capture emails/phones within each card container).
 
-Filter control selectors may need adjustment per site; interaction relies on select\[name='sector'] and select\[name='country'] plus a Search/Apply button.​
+🧰 Tips
 
+If the page shows “We were not able to find the results,” adjust the Playwright selectors in contacts.py to match the actual sector/country controls, and click the correct Search/Apply button.
 
+To commit run outputs despite .gitignore, either use git add -f results\run.json or add a negate rule !results/run.json to .gitignore.​
 
-Assumptions:
+📖 Resources
 
+Scrapy shell and tutorial references for quick selector checks and project scaffolding.​
 
-
-Each card has an h5 title and mailto/tel anchors; regex over card text is used to catch additional contacts.​
-
-
-
-Improvements:
-
-
-
-Add pagination and infinite-scroll handling; dedupe items by canonical URL.​
-
-
-
-Add precision rules to suppress footer/boilerplate contacts using proximity to the title or container scoping.​
-
-
-
-Repro:
-
-
-
-Use Scrapy shell checks to ensure the page isn’t in the empty state (count > 1 and no empty-state text) before long runs.​
-
-
-
-Step 5 — Optional: add sample results
-
-
-
-Copy your working item(s) into results/sample\_libf\_2025.json. Keep only public-contact fields that appear in-page.
-
+Scrapy command-line notes for runspider vs crawl usage.
