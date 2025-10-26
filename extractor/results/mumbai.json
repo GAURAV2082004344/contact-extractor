@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://www.libf.co/directory/libf-2025",
+    "socials": [],
+    "emails": [
+      "contact@libf.co"
+    ],
+    "phones": [
+      {
+        "original": "+91 7977101011",
+        "normalized": "+917977101011"
+      }
+    ],
+    "name_candidates": [],
+    "notes": {
+      "social_notes": [],
+      "email_notes": [
+        "mailto:mailto:contact@libf.co"
+      ],
+      "phone_notes": [
+        "tel:tel:+917977101011"
+      ],
+      "visibility_filter": "ignored script/style/template/comments/aria-hidden/display:none inline",
+      "url": "https://www.libf.co/directory/libf-2025"
+    }
+  },
+  {
+    "url": "https://example.com/contact",
+    "socials": [],
+    "emails": [],
+    "phones": [],
+    "name_candidates": [
+      {
+        "name": "Example Domain",
+        "confidence": 60
+      }
+    ],
+    "notes": {
+      "social_notes": [],
+      "email_notes": [],
+      "phone_notes": [],
+      "visibility_filter": "ignored script/style/template/comments/aria-hidden/display:none inline",
+      "url": "https://example.com/contact"
+    }
+  },
+  {
+    "url": "https://example.org/about",
+    "socials": [],
+    "emails": [],
+    "phones": [],
+    "name_candidates": [],
+    "notes": {
+      "fetch": "ReadTimeout: The read operation timed out"
+    }
+  }
+]

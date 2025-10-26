@@ -1,0 +1,11 @@
+.venv/
+
+pycache/
+
+.scrapy/
+
+playwright/.cache
+
+results/*.csv
+
+results/*.json
