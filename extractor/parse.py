@@ -1,121 +1,130 @@
-import re
-from bs4 import BeautifulSoup, Comment
-from extractor.constants import SOCIAL_DOMAINS, EMAIL_REGEX, PHONE_REGEX, HIDE_INLINE_FLAGS
-from extractor.normalize import clean_email, normalize_phone
-from extractor.heuristics import title_case_name_candidates, email_hint_name, score_name
+import re  # [file:98]
+from bs4 import BeautifulSoup, Comment  # [file:98]
+from urllib.parse import urljoin  # [file:98]
+from extractor.constants import SOCIAL_DOMAINS, EMAIL_REGEX, PHONE_REGEX, HIDE_INLINE_FLAGS  # [file:98]
+from extractor.normalize import clean_email, normalize_phone  # [file:98]
+from extractor.heuristics import title_case_name_candidates, email_hint_name, score_name  # [file:98]
 
-def _visible(el):
-    if el.name in ("script","style","template"):
-        return False
-    if el.has_attr("aria-hidden") and str(el.get("aria-hidden","")).lower() == "true":
-        return False
-    if el.has_attr("style"):
-        style = str(el.get("style","")).replace(" ", "").lower()
-        if any(flag in style for flag in HIDE_INLINE_FLAGS):
-            return False
-    return True
+def _visible(el):  # [file:98]
+    if el.name in ("script","style","template","noscript"):  # include noscript  # [file:98]
+        return False  # [file:98]
+    if el.has_attr("aria-hidden") and str(el.get("aria-hidden","")).lower() == "true":  # [file:98]
+        return False  # [file:98]
+    if el.has_attr("style"):  # [file:98]
+        style = str(el.get("style","")).replace(" ", "").lower()  # [file:98]
+        if any(flag in style for flag in HIDE_INLINE_FLAGS):  # [file:98]
+            return False  # [file:98]
+    return True  # [file:98]
 
-def _iter_visible_text(soup):
-    for el in soup.find_all(string=True):
-        if isinstance(el, Comment):
-            continue
-        parent = el.parent
-        if parent and _visible(parent):
-            t = str(el).strip()
-            if t:
-                yield t
+def _iter_visible_text(soup):  # [file:98]
+    for el in soup.find_all(string=True):  # [file:98]
+        if isinstance(el, Comment):  # [file:98]
+            continue  # [file:98]
+        parent = el.parent  # [file:98]
+        if parent and _visible(parent):  # [file:98]
+            # Skip non-textual containers  # [file:98]
+            if parent.name in ("svg","img","picture"):  # [file:98]
+                continue  # [file:98]
+            t = str(el).strip()  # [file:98]
+            if t:  # [file:98]
+                yield t  # [file:98]
 
-def _extract_socials(soup):
-    socials, notes = [], []
-    for a in soup.find_all("a", href=True):
-        if not _visible(a):
-            continue
-        href = a.get("href","").strip()
-        if any(dom in href for dom in SOCIAL_DOMAINS):
-            label = a.get_text(" ", strip=True)
-            socials.append({"href": href, "label": label})
-            notes.append(f"social:{href}|label:{label[:50]}")
-    return socials, notes
+def _extract_socials(soup, base_url):  # absolute-ize URLs  # [file:98]
+    socials, notes = [], []  # [file:98]
+    seen = set()  # dedupe  # [file:98]
+    for a in soup.find_all("a", href=True):  # [file:98]
+        if not _visible(a):  # [file:98]
+            continue  # [file:98]
+        href = a.get("href","").strip()  # [file:98]
+        if any(dom in href for dom in SOCIAL_DOMAINS):  # [file:98]
+            abs_url = urljoin(base_url, href)  # [file:98]
+            if abs_url in seen:  # [file:98]
+                continue  # [file:98]
+            seen.add(abs_url)  # [file:98]
+            label = a.get_text(" ", strip=True)  # [file:98]
+            socials.append({"href": abs_url, "label": label})  # [file:98]
+            notes.append(f"social:{abs_url}|label:{label[:50]}")  # [file:98]
+    return socials, notes  # [file:98]
 
-def _extract_emails(soup, vis_texts):
-    emails, notes = set(), []
-    for a in soup.find_all("a", href=True):
-        if not _visible(a):
-            continue
-        href = a["href"]
-        m = re.search(EMAIL_REGEX, href, re.IGNORECASE)
-        if m:
-            emails.add(clean_email(m.group(1)))
-            notes.append(f"mailto:{href}")
-    for t in vis_texts:
-        for m in re.finditer(EMAIL_REGEX, t, re.IGNORECASE):
-            emails.add(clean_email(m.group(1)))
-    return sorted(emails), notes
+def _extract_emails(soup, vis_texts):  # [file:98]
+    emails, notes = set(), []  # [file:98]
+    # mailto links: ensure the pattern looks for 'mailto:' + EMAIL_REGEX  # [file:98]
+    for a in soup.find_all("a", href=True):  # [file:98]
+        if not _visible(a):  # [file:98]
+            continue  # [file:98]
+        href = a["href"]  # [file:98]
+        m = re.search(r"mailto:" + EMAIL_REGEX, href, re.IGNORECASE)  # [file:98]
+        if m:  # [file:98]
+            emails.add(clean_email(m.group(1)))  # [file:98]
+            notes.append(f"mailto:{href}")  # [file:98]
+    # visible text emails  # [file:98]
+    for t in vis_texts:  # [file:98]
+        for m in re.finditer(EMAIL_REGEX, t, re.IGNORECASE):  # [file:98]
+            emails.add(clean_email(m.group(1)))  # [file:98]
+    return sorted(emails), notes  # [file:98]
 
-def _extract_phones(soup, vis_texts):
-    phones, notes = set(), []
-    for a in soup.find_all("a", href=True):
-        if not _visible(a):
-            continue
-        href = a["href"]
-        m = re.search(PHONE_REGEX, href)
-        if m:
-            orig = m.group(1)
-            phones.add((orig.strip(), normalize_phone(orig)))
-            notes.append(f"tel:{href}")
-    for t in vis_texts:
-        for m in re.finditer(PHONE_REGEX, t):
-            orig = m.group(1)
-            phones.add((orig.strip(), normalize_phone(orig)))
+def _extract_phones(soup, vis_texts):  # [file:98]
+    phones, notes = set(), []  # [file:98]
+    for a in soup.find_all("a", href=True):  # [file:98]
+        if not _visible(a):  # [file:98]
+            continue  # [file:98]
+        href = a["href"]  # [file:98]
+        m = re.search(r"tel:" + PHONE_REGEX, href)  # [file:98]
+        if m:  # [file:98]
+            orig = m.group(1)  # [file:98]
+            phones.add((orig.strip(), normalize_phone(orig)))  # [file:98]
+            notes.append(f"tel:{href}")  # [file:98]
+    for t in vis_texts:  # [file:98]
+        for m in re.finditer(PHONE_REGEX, t):  # [file:98]
+            orig = m.group(1)  # [file:98]
+            phones.add((orig.strip(), normalize_phone(orig)))  # [file:98]
+    out = [{"original": o, "normalized": n} for (o, n) in sorted(phones)]  # [file:98]
+    seen = set()  # [file:98]
+    dedup = []  # [file:98]
+    for item in out:  # [file:98]
+        key = item.get("normalized") or item.get("original")  # [file:98]
+        if key and key not in seen:  # [file:98]
+            seen.add(key)  # [file:98]
+            dedup.append(item)  # [file:98]
+    return dedup, notes  # [file:98]
 
-    # Build list and deduplicate by normalized (fallback to original)
-    out = [{"original": o, "normalized": n} for (o, n) in sorted(phones)]
-    seen = set()
-    dedup = []
-    for item in out:
-        key = item.get("normalized") or item.get("original")
-        if key and key not in seen:
-            seen.add(key)
-            dedup.append(item)
-    return dedup, notes
+def _extract_name_candidates(soup, vis_texts, emails):  # [file:98]
+    cands = []  # [file:98]
+    likely_blocks = []  # [file:98]
+    for sel in ["h1","h2","h3",".author",".person",".profile",".about",".contact"]:  # [file:98]
+        likely_blocks += soup.select(sel)  # [file:98]
+    texts = [x.get_text(" ", strip=True) for x in likely_blocks if _visible(x)]  # [file:98]
+    texts += list(vis_texts)  # [file:98]
+    title_case = set(title_case_name_candidates(texts))  # [file:98]
+    for e in emails:  # [file:98]
+        local = e.split("@",1)[0]  # [file:98]
+        hint = email_hint_name(local)  # [file:98]
+        if hint:  # [file:98]
+            title_case.add(hint)  # [file:98]
+    nearby = " ".join(texts[:200])[:2000]  # [file:98]
+    scored = [{"name": n, "confidence": score_name(n, nearby)} for n in title_case]  # [file:98]
+    scored.sort(key=lambda x: x["confidence"], reverse=True)  # [file:98]
+    return scored[:5]  # [file:98]
 
-def _extract_name_candidates(soup, vis_texts, emails):
-    cands = []
-    likely_blocks = []
-    for sel in ["h1","h2","h3",".author",".person",".profile",".about",".contact"]:
-        likely_blocks += soup.select(sel)
-    texts = [x.get_text(" ", strip=True) for x in likely_blocks if _visible(x)]
-    texts += list(vis_texts)
-    title_case = set(title_case_name_candidates(texts))
-    for e in emails:
-        local = e.split("@",1)[0]
-        hint = email_hint_name(local)
-        if hint:
-            title_case.add(hint)
-    nearby = " ".join(texts[:200])[:2000]
-    scored = [{"name": n, "confidence": score_name(n, nearby)} for n in title_case]
-    scored.sort(key=lambda x: x["confidence"], reverse=True)
-    return scored[:5]
-
-def extract_all(html: str, final_url: str):
-    soup = BeautifulSoup(html, "lxml")
-    vis_texts = list(_iter_visible_text(soup))
-    socials, s_notes = _extract_socials(soup)
-    emails, e_notes = _extract_emails(soup, vis_texts)
-    phones, p_notes = _extract_phones(soup, vis_texts)
-    name_cands = _extract_name_candidates(soup, vis_texts, emails)
+def extract_all(html: str, final_url: str):  # [file:98]
+    soup = BeautifulSoup(html, "lxml")  # [file:98]
+    vis_texts = list(_iter_visible_text(soup))  # [file:98]
+    socials, s_notes = _extract_socials(soup, final_url)  # pass base_url for absolute href  # [file:98]
+    emails, e_notes = _extract_emails(soup, vis_texts)  # [file:98]
+    phones, p_notes = _extract_phones(soup, vis_texts)  # [file:98]
+    name_cands = _extract_name_candidates(soup, vis_texts, emails)  # [file:98]
     notes = {
-        "social_notes": s_notes[:50],
+        "social_notes": s_notes[:50],  # cap note volume
         "email_notes": e_notes[:50],
         "phone_notes": p_notes[:50],
-        "visibility_filter": "ignored script/style/template/comments/aria-hidden/display:none inline",
-        "url": final_url
-    }
+        "visibility_filter": "ignored script/style/template/noscript/comments/aria-hidden/display:none inline",
+        "url": final_url,
+    }  # [file:98]
     return {
         "url": final_url,
         "socials": socials,
         "emails": emails,
         "phones": phones,
         "name_candidates": name_cands,
-        "notes": notes
-    }
+        "notes": notes,
+    }  # [file:98]

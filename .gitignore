@@ -2,10 +2,18 @@
 
 pycache/
 
+*.pyc
+
+.pytest_cache/
+
 .scrapy/
 
-playwright/.cache
+.idea/
 
-results/*.csv
+*.iml
+
+*.log
 
 results/*.json
+
+.env

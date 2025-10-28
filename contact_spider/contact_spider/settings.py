@@ -1,46 +1,44 @@
-# Scrapy settings for contact_spider
+# Scrapy settings for contact_spider (DOM-only extractor with Playwright)  [file:98]
 
-BOT_NAME = "contact_spider"
+BOT_NAME = "contact_spider"  # [file:98]
 
-SPIDER_MODULES = ["contact_spider.spiders"]
-NEWSPIDER_MODULE = "contact_spider.spiders"
+SPIDER_MODULES = ["contact_spider.spiders"]  # [file:98]
+NEWSPIDER_MODULE = "contact_spider.spiders"  # [file:98]
 
-# Respect robots.txt (set False if you need to ignore for testing)
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = True  # [file:98]
 
-# Your installed scrapy-playwright package provides a download handler (handler.py),
-# not a downloader middleware. Enable it for http/https.
+# Enable scrapy-playwright handler for JS pages  # [file:98]
 DOWNLOAD_HANDLERS = {
     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-}
+}  # [file:98]
 
-# Reactor recommended by Scrapy 2.13 for asyncio
-TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+# Asyncio reactor for Scrapy 2.13+  # [file:98]
+TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"  # [file:98]
 
-# Playwright configuration
-PLAYWRIGHT_BROWSER_TYPE = "chromium"
-PLAYWRIGHT_LAUNCH_OPTIONS = {
-    "headless": True,
-}
+# Playwright defaults tuned for SPAs (no API usage; DOM-only extraction)  # [file:98]
+PLAYWRIGHT_BROWSER_TYPE = "chromium"  # [file:98]
+PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}  # [file:98]
+PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 90000  # [file:98]
+PLAYWRIGHT_PAGE_GOTO_OPTIONS = {"wait_until": "networkidle"}  # [file:98]
 
-# Optional: stable headers
+# Stable headers  # [file:98]
 DEFAULT_REQUEST_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/124.0.0.0 Safari/537.36",
     "Accept-Language": "en-US,en;q=0.9",
-}
+}  # [file:98]
 
-# New 3-arg signature for header processing; keep headers unchanged
+# 3-arg header processor (Scrapy 2.13)  # [file:98]
 def process_headers(browser_type_name: str, playwright_request, scrapy_request_data: dict):
-    return scrapy_request_data["headers"]
+    return scrapy_request_data["headers"]  # [file:98]
 
-PLAYWRIGHT_PROCESS_REQUEST_HEADERS = process_headers
+PLAYWRIGHT_PROCESS_REQUEST_HEADERS = process_headers  # [file:98]
 
-# Concurrency and timeouts
-CONCURRENT_REQUESTS = 8
-DOWNLOAD_TIMEOUT = 30
-RETRY_TIMES = 2
+# Concurrency/timeouts  # [file:98]
+CONCURRENT_REQUESTS = 8  # [file:98]
+DOWNLOAD_TIMEOUT = 90  # [file:98]
+RETRY_TIMES = 2  # [file:98]
 
-# Minimal extensions and encoding
-EXTENSIONS = {"scrapy.extensions.corestats.CoreStats": 0}
-FEED_EXPORT_ENCODING = "utf-8"
+FEED_EXPORT_ENCODING = "utf-8"  # [file:98]
